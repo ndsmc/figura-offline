@@ -24,6 +24,7 @@ import org.figuramc.figura.lua.api.nameplate.EntityNameplateCustomization;
 import org.figuramc.figura.lua.api.vanilla_model.VanillaPart;
 import org.figuramc.figura.math.vector.FiguraVec3;
 import org.figuramc.figura.permissions.Permissions;
+import org.figuramc.figura.utils.EntityUtils;
 import org.figuramc.figura.utils.RenderUtils;
 import org.figuramc.figura.utils.TextUtils;
 import org.joml.Matrix4f;
@@ -56,8 +57,11 @@ public abstract class PlayerRendererMixin extends LivingEntityRenderer<AbstractC
         if (config == 0 || AvatarManager.panic || this.entityRenderDispatcher.distanceToSqr(player) > 4096)
             return;
 
+        var playerUUID = EntityUtils.getEntityUUID(player).getNow(null);
+        if (playerUUID == null) return;
+
         // get customizations
-        Avatar avatar = AvatarManager.getAvatarForPlayer(player.getUUID());
+        Avatar avatar = AvatarManager.getAvatarForPlayer(playerUUID);
         EntityNameplateCustomization custom = avatar == null || avatar.luaRuntime == null ? null : avatar.luaRuntime.nameplate.ENTITY;
 
         // customization boolean, which also is the permission check
@@ -119,7 +123,7 @@ public abstract class PlayerRendererMixin extends LivingEntityRenderer<AbstractC
 
         // badges
         FiguraMod.popPushProfiler("badges");
-        replacement = Badges.appendBadges(replacement, player.getUUID(), config > 1);
+        replacement = Badges.appendBadges(replacement, playerUUID, config > 1);
 
         FiguraMod.popPushProfiler("applyName");
         text = TextUtils.replaceInText(text, "\\b" + Pattern.quote(player.getName().getString()) + "\\b", replacement);
@@ -210,7 +214,10 @@ public abstract class PlayerRendererMixin extends LivingEntityRenderer<AbstractC
 
     @Inject(at = @At(value = "INVOKE", shift = At.Shift.AFTER, target = "Lnet/minecraft/client/model/PlayerModel;setupAnim(Lnet/minecraft/world/entity/LivingEntity;FFFFF)V"), method = "renderHand")
     private void onRenderHand(PoseStack stack, MultiBufferSource multiBufferSource, int light, AbstractClientPlayer player, ModelPart arm, ModelPart sleeve, CallbackInfo ci) {
-        avatar = AvatarManager.getAvatarForPlayer(player.getUUID());
+        var playerUUID = EntityUtils.getEntityUUID(player).getNow(null);
+        if (playerUUID == null) return;
+
+        avatar = AvatarManager.getAvatarForPlayer(playerUUID);
         if (avatar != null && avatar.luaRuntime != null) {
             VanillaPart part = avatar.luaRuntime.vanilla_model.PLAYER;
             PlayerModel<AbstractClientPlayer> model = this.getModel();
